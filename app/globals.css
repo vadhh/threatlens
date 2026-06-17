@@ -10,6 +10,24 @@
   }
 }
 
+:root {
+  --tl-bg-primary: #0a0c10;
+  --tl-bg-surface: #111318;
+  --tl-bg-elevated: #1a1d24;
+  --tl-border: #2a2d35;
+  --tl-text-primary: #e2e8f0;
+  --tl-text-muted: #64748b;
+  --tl-accent-green: #22c55e;
+  --tl-accent-amber: #f59e0b;
+  --tl-accent-red: #ef4444;
+  --tl-accent-blue: #3b82f6;
+}
+
+@keyframes tl-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
 @layer base {
   .theme {
     --font-heading: var(--font-sans);

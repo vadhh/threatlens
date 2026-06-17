@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ThreatLens
 
-## Getting Started
+> LLM-assisted IP threat-intel chat. Paste an IP (or a sentence with one), get a streamed risk verdict grounded in live [AbuseIPDB](https://www.abuseipdb.com/) reputation data.
 
-First, run the development server:
+ThreatLens extracts public IPs from your message server-side, looks up their abuse reputation, and feeds that data to an LLM that explains the risk in plain English — or in terse analyst shorthand. Responses stream token-by-token and can be stopped mid-generation.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Live:** _add your Vercel URL here_ · **Repo:** https://github.com/vadhh/threatlens
+
+---
+
+## Why it's interesting
+
+Most "AI chatbot" projects are a thin wrapper over a model. ThreatLens is built around the parts that actually matter in production:
+
+- **Secrets never reach the client.** AbuseIPDB and model keys live server-side; the browser only talks to your own API routes.
+- **Untrusted input is re-validated at the boundary.** IPs are re-extracted from user text on the server and filtered to globally-routable addresses — the client's claims are never trusted.
+- **Abuse is bounded.** Per-client fixed-window rate limiting, a cap on IP lookups per request, and message-size limits.
+- **External calls are deduped.** A shared TTL cache means the same IP hits AbuseIPDB at most once per hour, across every route.
+- **It's tested.** 136 unit tests across the lib and components (Vitest + Testing Library).
+
+## Stack
+
+| Layer | Choice |
+|------|--------|
+| Framework | Next.js 14 (App Router) + TypeScript |
+| UI | Tailwind CSS, Base UI, Lucide icons |
+| LLM | [OpenRouter](https://openrouter.ai/) free model (`nvidia/nemotron-3-super-120b-a12b:free`) via the Vercel AI SDK |
+| Threat data | AbuseIPDB v2 reputation API |
+| Tests | Vitest, @testing-library/react |
+
+## How it works
+
+```
+user message
+  → POST /api/chat
+    → rate limit (per-client, fixed window)
+    → parse + size-check messages
+    → extract IPs from user text → keep only public, cap at 5
+    → lookup each IP (AbuseIPDB, shared TTL cache)
+    → build system prompt with the reputation data
+    → stream LLM response (OpenRouter) back to the client
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Two modes: **Explain** (plain-language verdict for humans) and **Analyst** (terse, scannable shorthand).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Getting started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+cp .env.example .env.local   # then fill in the two keys below
+npm run dev
+```
 
-## Learn More
+Open http://localhost:3000.
 
-To learn more about Next.js, take a look at the following resources:
+### Environment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+OPENROUTER_API_KEY=...   # https://openrouter.ai/keys (free tier works)
+ABUSEIPDB_API_KEY=...    # https://www.abuseipdb.com/account/api
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Both are server-only and never exposed to the browser. Without `ABUSEIPDB_API_KEY` the app still runs — it just skips reputation enrichment.
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev     # dev server
+npm run build   # production build
+npm test        # run the test suite (vitest run)
+npm run lint    # next lint
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deploy
+
+Import the repo on [Vercel](https://vercel.com/new), set `OPENROUTER_API_KEY` and `ABUSEIPDB_API_KEY` in project env vars, and deploy. The chat route declares `maxDuration = 60` so slow free-model responses aren't cut off by Hobby's default timeout.
+
+## Production notes
+
+The rate limiter and IP cache are **in-memory** — fine for a single instance or a demo, but on multi-instance serverless they're best-effort per instance. For hard guarantees under real traffic, swap in a shared store (Upstash Redis). This is a deliberate, documented trade-off, not an oversight.
