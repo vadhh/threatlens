@@ -1,10 +1,13 @@
 # ThreatLens
 
+<img width="1875" height="1010" alt="image" src="https://github.com/user-attachments/assets/c273467a-0e8e-43ff-8a37-7144c04839b3" />
+
+
 > LLM-assisted IP threat-intel chat. Paste an IP (or a sentence with one), get a streamed risk verdict grounded in live [AbuseIPDB](https://www.abuseipdb.com/) reputation data.
 
-ThreatLens extracts public IPs from your message server-side, looks up their abuse reputation, and feeds that data to an LLM that explains the risk in plain English — or in terse analyst shorthand. Responses stream token-by-token and can be stopped mid-generation.
+ThreatLens extracts public IPs from your message server-side, looks up their abuse reputation, and feeds that data to an LLM that explains the risk in plain English or in terse analyst shorthand. Responses stream token-by-token and can be stopped mid-generation.
 
-**Live:** _add your Vercel URL here_ · **Repo:** https://github.com/vadhh/threatlens
+**Live:** [Threatlens](https://threatlens-gamma.vercel.app/) · **Repo:** https://github.com/vadhh/threatlens
 
 ---
 
@@ -13,7 +16,7 @@ ThreatLens extracts public IPs from your message server-side, looks up their abu
 Most "AI chatbot" projects are a thin wrapper over a model. ThreatLens is built around the parts that actually matter in production:
 
 - **Secrets never reach the client.** AbuseIPDB and model keys live server-side; the browser only talks to your own API routes.
-- **Untrusted input is re-validated at the boundary.** IPs are re-extracted from user text on the server and filtered to globally-routable addresses — the client's claims are never trusted.
+- **Untrusted input is re-validated at the boundary.** IPs are re-extracted from user text on the server and filtered to globally-routable addresses, the client's claims are never trusted.
 - **Abuse is bounded.** Per-client fixed-window rate limiting, a cap on IP lookups per request, and message-size limits.
 - **External calls are deduped.** A shared TTL cache means the same IP hits AbuseIPDB at most once per hour, across every route.
 - **It's tested.** 136 unit tests across the lib and components (Vitest + Testing Library).
@@ -60,7 +63,7 @@ OPENROUTER_API_KEY=...   # https://openrouter.ai/keys (free tier works)
 ABUSEIPDB_API_KEY=...    # https://www.abuseipdb.com/account/api
 ```
 
-Both are server-only and never exposed to the browser. Without `ABUSEIPDB_API_KEY` the app still runs — it just skips reputation enrichment.
+Both are server-only and never exposed to the browser. Without `ABUSEIPDB_API_KEY` the app still runs, it just skips reputation enrichment.
 
 ## Scripts
 
@@ -77,4 +80,4 @@ Import the repo on [Vercel](https://vercel.com/new), set `OPENROUTER_API_KEY` an
 
 ## Production notes
 
-The rate limiter and IP cache are **in-memory** — fine for a single instance or a demo, but on multi-instance serverless they're best-effort per instance. For hard guarantees under real traffic, swap in a shared store (Upstash Redis). This is a deliberate, documented trade-off, not an oversight.
+The rate limiter and IP cache are **in-memory**, fine for a single instance or a demo, but on multi-instance serverless they're best-effort per instance. For hard guarantees under real traffic, swap in a shared store (Upstash Redis). This is a deliberate, documented trade-off, not an oversight.
